@@ -277,7 +277,7 @@ WebSession.prototype.saveWebpage = function (translate) {
 		// XXX better status code?
 		this.ctx.throw(501, "No translators available\n");
 	}
-
+	
 	// TEMP: Return basic webpage item for HTML
 	let description = head.querySelector('meta[name=description]');
 	if (description) {

@@ -5,11 +5,25 @@
 	"identifierSearchLambda": "", // Identifier search Lambda function for text search
 	"port": 1969,
 	"host": "0.0.0.0", // host to listen on
-	"textSearchTimeout": 5,
+	"textSearchTimeout": 100,
 	"translators": {
 		"CrossrefREST.email": "" // Pass an email to Crossref REST API to utilize the faster servers pool
 	},
 	"userAgent": "ub_tools/zotero (see https://ixtheo.de/crawler)",
 	"translatorsDirectory": "./modules/translators",
-	"persistentCookies": true // Remember upstream cookies between translation operations. Do not enable for a public service.
+	"persistentCookies": true, // Remember upstream cookies between translation operations. Do not enable for a public service.
+    "domainRequestIntervals": [
+        {
+          "domain": "default",
+          "requestInterval": 0
+        },
+        {
+          "domain": "journals.sagepub.com",
+          "requestInterval": 1000
+        },
+        {
+          "domain": "dialnet.unirioja.es",
+          "requestInterval": 1000
+        }
+    ]
 }

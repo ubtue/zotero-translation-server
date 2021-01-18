@@ -23,7 +23,19 @@
         },
         {
           "domain": "dialnet.unirioja.es",
-          "requestInterval": 1000
+          "requestInterval": 4000
+        },
+        {
+          "domain": "www.redi-bw.de",
+          "requestInterval": 700
+        },
+        {
+          "domain": "web.a.ebscohost.com",
+          "requestInterval": 700
+        },
+        {
+          "domain": "web.b.ebscohost.com",
+          "requestInterval": 700
         }
     ]
 }

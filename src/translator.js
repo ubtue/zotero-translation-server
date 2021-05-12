@@ -1,30 +1,30 @@
 /*
     ***** BEGIN LICENSE BLOCK *****
-    
+
     Copyright © 2013 Center for History and New Media
                      George Mason University, Fairfax, Virginia, USA
                      http://zotero.org
-    
+
     This file is part of Zotero.
-    
+
     Zotero is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
-    
+
     Zotero is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU Affero General Public License for more details.
-    
+
     You should have received a copy of the GNU Affero General Public License
     along with Zotero.  If not, see <http://www.gnu.org/licenses/>.
-    
+
     ***** END LICENSE BLOCK *****
 */
 
 // Enumeration of types of translators
-var TRANSLATOR_TYPES = {"import":1, "export":2, "web":4, "search":8};
+var TRANSLATOR_TYPES = {"import":1, "export":2, "web":4, "search":8, "searchmultiple":16};
 
 // Properties required for every translator
 var TRANSLATOR_REQUIRED_PROPERTIES = ["translatorID", "translatorType", "label", "creator",
@@ -88,9 +88,9 @@ Zotero.Translator.prototype.init = function(info) {
 			this[property] = info[property];
 		}
 	}
-	
+
 	this.browserSupport = info["browserSupport"] ? info["browserSupport"] : "g";
-	
+
 	var supported = !Zotero.isBookmarklet || this.browserSupport.includes("b") ||
 			/(?:^|; ?)bookmarklet-debug-mode=1(?:$|; ?)/.test(document.cookie);
 
@@ -99,14 +99,14 @@ Zotero.Translator.prototype.init = function(info) {
 	} else {
 		this.runMode = Zotero.Translator.RUN_MODE_ZOTERO_STANDALONE;
 	}
-	
+
 	if (this.translatorType & TRANSLATOR_TYPES["import"]) {
 		// compile import regexp to match only file extension
 		this.importRegexp = this.target ? new RegExp("\\."+this.target+"$", "i") : null;
 	} else if (this.hasOwnProperty("importRegexp")) {
 		delete this.importRegexp;
 	}
-	
+
 	if (this.translatorType & TRANSLATOR_TYPES["web"]) {
 		// compile web regexp
 		this.cacheCode |= !this.target;
@@ -117,7 +117,8 @@ Zotero.Translator.prototype.init = function(info) {
 	} else if (this.hasOwnProperty("webRegexp")) {
 		delete this.webRegexp;
 	}
-	
+
+
 	if (info.path) {
 		this.path = info.path;
 		this.fileName = OS.Path.basename(info.path);

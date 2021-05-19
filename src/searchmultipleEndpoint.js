@@ -34,7 +34,7 @@ var requestsSinceGC = 0;
 
 var SearchMultipleEndpoint = module.exports = {
 	handle: async function (ctx, next) {
-		ctx.assert(ctx.is('text'), 415);
+		ctx.assert(ctx.is('text/plain') || ctx.is('json'), 415);
 
         setTimeout(() => {
             gc();
@@ -46,9 +46,6 @@ var SearchMultipleEndpoint = module.exports = {
 		if (!data) {
 			ctx.throw(400, "POST data not provided\n");
 		}
-
-		// Look for DOI, ISBN, etc.
-		var identifiers = Zotero.Utilities.Internal.extractIdentifiers(data);
 
         // If follow-up request, retrieve session and update context
 		var query;

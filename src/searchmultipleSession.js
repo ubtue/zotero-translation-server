@@ -188,7 +188,7 @@ SearchMultipleSession.prototype.select = function (url, translate, items, callba
  * Called when items have been selected by the client
  */
 SearchMultipleSession.prototype.selectDone = function () {
-	var url = this.data;
+	var url = this.data.url;
 	var selectedItems = this.data.items;
 
 	if (this.url != url) {

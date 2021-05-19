@@ -27,10 +27,19 @@ const config = require('config');
 const Translate = require('./translation/translate');
 const TextSearch = require('./textSearch');
 
+const SELECT_TIMEOUT = 60;
+const sessionsWaitingForSelection = {};
+
+var requestsSinceGC = 0;
+
 var SearchMultipleEndpoint = module.exports = {
 	handle: async function (ctx, next) {
-        Zotero.debug("ENTERING SearchMultipleEndpoint");
 		ctx.assert(ctx.is('text'), 415);
+
+        setTimeout(() => {
+            gc();
+        });
+
 
 		var data = ctx.request.body;
 
@@ -40,21 +49,45 @@ var SearchMultipleEndpoint = module.exports = {
 
 		// Look for DOI, ISBN, etc.
 		var identifiers = Zotero.Utilities.Internal.extractIdentifiers(data);
-        Zotero.debug("IDENTIFIERS: " + identifiers);
 
-		// Use PMID only if it's the only text in the query, with or without a pmid: prefix
-		if (identifiers.length && identifiers[0].PMID
-				&& identifiers[0].PMID !== data.replace(/^\s*(?:pmid:)?([0-9]+)\s*$/, '$1')) {
-			identifiers = [];
+        // If follow-up request, retrieve session and update context
+		var query;
+		var session;
+		if (typeof data == 'object') {
+			let sessionID = data.session;
+			if (!sessionID) {
+				ctx.throw(400, "'session' not provided");
+			}
+			session = sessionsWaitingForSelection[sessionID];
+			if (session) {
+				delete sessionsWaitingForSelection[sessionID];
+				session.ctx = ctx;
+				session.next = next;
+				session.data = data;
+			} else {
+				let single = !!ctx.request.query.single;
+				session = new SearchMultipleSession(ctx, next, data, { single });
+			}
+		}
+		else {
+            // Look for DOI, ISBN, etc.
+            var identifiers = Zotero.Utilities.Internal.extractIdentifiers(data);
+			let single = !!ctx.request.query.single;
+			session = new SearchMultipleSession(ctx, next, data, { single });
 		}
 
-		// Text search
-		if (!identifiers.length) {
-			await TextSearch.handle(ctx, next);
-			return;
-		}
+        await session.handleSearchMultiple();
 
-		await this.handleIdentifier(ctx, identifiers[0]);
+        if (ctx.response.status == 300) {
+			if(typeof data == 'object') {
+				// Select item if this was an item selection query
+				session.data = data;
+				await session.handleSearchMultiple();
+			} else {
+				// Store session if returning multiple choices
+				sessionsWaitingForSelection[session.id] = session;
+			}
+		}
 	},
 
 
@@ -67,7 +100,8 @@ var SearchMultipleEndpoint = module.exports = {
 			if (!translators.length) {
 				ctx.throw(501, "No translators available", { expose: true });
 			}
-			translate.setTranslator(translators);
+
+            translate.setTranslator(translators);
 
 			var items = await translate.translate({
 				libraryID: false
@@ -97,3 +131,22 @@ var SearchMultipleEndpoint = module.exports = {
 		ctx.response.body = newItems;
 	}
 };
+
+/**
+ * Perform garbage collection every 10 requests
+ */
+function gc() {
+    if ((++requestsSinceGC) == 10) {
+        for (let i in sessionsWaitingForSelection) {
+            let session = sessionsWaitingForSelection[i];
+            if (session.started && Date.now() >= session.started + SELECT_TIMEOUT * 1000) {
+                delete sessionsWaitingForSelection[i];
+            }
+        }
+        requestsSinceGC = 0;
+    }
+}
+
+
+
+const SearchMultipleSession = require('./searchmultipleSession');

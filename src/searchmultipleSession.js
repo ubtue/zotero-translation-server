@@ -63,7 +63,7 @@ SearchMultipleSession.prototype.handleSearchMultiple = async function () {
 
     let translate = new Zotero.Translate.SearchMultiple();
     let translatePromise;
-       translate.setHandler("translators", async function (translate, translators) {
+        translate.setHandler("translators", async function (translate, translators) {
         try {
             translatePromise = this.translate(translate, translators);
             await translatePromise;
@@ -192,7 +192,7 @@ SearchMultipleSession.prototype.selectDone = function () {
 	var selectedItems = this.data.items;
 
 	if (this.url != url) {
-		this.ctx.throw(409, "'url' does not match URL in session");
+		this.ctx.throw(409, "'url' \'" + url + "\' does not match URL \'" + this.url + "\' in session");
 	}
 
 	if (!selectedItems) {

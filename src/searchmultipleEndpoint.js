@@ -67,8 +67,8 @@ var SearchMultipleEndpoint = module.exports = {
 			}
 		}
 		else {
-            // Look for DOI, ISBN, etc.
-            var identifiers = Zotero.Utilities.Internal.extractIdentifiers(data);
+			// Look for DOI, ISBN, etc.
+			var identifiers = Zotero.Utilities.Internal.extractIdentifiers(data);
 			let single = !!ctx.request.query.single;
 			session = new SearchMultipleSession(ctx, next, data, { single });
 		}
@@ -79,7 +79,7 @@ var SearchMultipleEndpoint = module.exports = {
 			if(typeof data == 'object') {
 				// Select item if this was an item selection query
 				session.data = data;
-				await session.handleSearchMultiple();
+                await session.handleSearchMultiple();
 			} else {
 				// Store session if returning multiple choices
 				sessionsWaitingForSelection[session.id] = session;

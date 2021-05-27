@@ -31,10 +31,8 @@ const Translate = require('./translation/translate');
 const TLDS = Zotero.require('./translation/tlds');
 const HTTP = require('./http');
 const Translators = require('./translators');
-const ImportEndpoint = require('./importEndpoint');
 const SearchEndpoint = require('./searchEndpoint');
 const { jar: cookieJar } = require('request');
-const SERVER_TRANSLATION_TIMEOUT = 30;
 const FORWARDED_HEADERS = ['Accept-Language'];
 
 var SearchMultipleSession = module.exports = function (ctx, next, data, options) {

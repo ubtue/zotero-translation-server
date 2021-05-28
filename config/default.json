@@ -36,6 +36,16 @@
         {
           "domain": "web.b.ebscohost.com",
           "requestInterval": 700
+        },
+        {
+          "domain": "scielo.conicyt.cl",
+          "requestInterval": 2000
+        },
+        {
+          "domain": "api.springernature.com",
+          "requestInterval": 400
         }
+
+
     ]
 }

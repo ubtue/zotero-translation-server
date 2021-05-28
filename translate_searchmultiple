@@ -1,0 +1,9 @@
+#!/bin/bash
+
+URL="$1"
+if [ -z "$1" ]; then
+	echo "Usage: $0 identifier-or-phrase"
+	exit 1
+fi
+
+curl -vvv -d "$URL" -H "Content-Type: text/plain" 127.0.0.1:1969/searchmultiple | jq '{ url: .url, session: .session, items: .items | to_entries | [.[0]] | from_entries }' | curl -v -d @- -H "Content-Type: application/json" 127.0.0.1:1969/searchmultiple

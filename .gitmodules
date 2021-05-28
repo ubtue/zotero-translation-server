@@ -3,4 +3,4 @@
 	url = https://github.com/ubtue/zotero-translators.git
 [submodule "modules/zotero"]
 	path = modules/zotero
-	url = https://github.com/zotero/zotero.git
+	url = https://github.com/ubtue/zotero.git

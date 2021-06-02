@@ -58,6 +58,8 @@ Translators.init()
 
 	var port = config.get('port');
 	var host = config.get('host');
-	app.listen(port, host);
+    var timeout = config.get('serverTimeout');
+	let server = app.listen(port, host);
+    server.timeout = timeout;
 	Debug.log(`Listening on ${host}:${port}`);
 });

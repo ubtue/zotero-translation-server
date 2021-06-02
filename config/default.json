@@ -5,7 +5,8 @@
 	"identifierSearchLambda": "", // Identifier search Lambda function for text search
 	"port": 1969,
 	"host": "0.0.0.0", // host to listen on
-	"textSearchTimeout": 100,
+    "textSearchTimeout": 100,
+    "serverTimeout": 900000, // Also handle long running requests (15 * 60 * 1000
 	"translators": {
 		"CrossrefREST.email": "" // Pass an email to Crossref REST API to utilize the faster servers pool
 	},
@@ -43,9 +44,7 @@
         },
         {
           "domain": "api.springernature.com",
-          "requestInterval": 400
+          "requestInterval": 300
         }
-
-
     ]
 }

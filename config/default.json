@@ -45,6 +45,10 @@
         {
           "domain": "api.springernature.com",
           "requestInterval": 300
+        },
+        {
+          "domain": "muse.jhu.edu",
+          "requestInterval": 500
         }
     ]
 }

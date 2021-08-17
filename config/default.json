@@ -48,7 +48,7 @@
         },
         {
           "domain": "muse.jhu.edu",
-          "requestInterval": 5000
+          "requestInterval": 500
         }
     ]
 }

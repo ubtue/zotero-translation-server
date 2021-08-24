@@ -49,6 +49,14 @@
         {
           "domain": "muse.jhu.edu",
           "requestInterval": 500
+        },
+        {
+          "domain": "cambridge.org",
+          "requestInterval": 1000
+        },
+        {
+          "domain": "www.digizeitschriften.de",
+          "requestInterval": 1000
         }
     ]
 }

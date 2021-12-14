@@ -57,6 +57,10 @@
         {
           "domain": "www.digizeitschriften.de",
           "requestInterval": 1000
+        },
+        {
+          "domain": "academic.oup.com",
+          "requestInterval": 3000
         }
     ]
 }

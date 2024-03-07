@@ -72,6 +72,9 @@ Zotero.HTTP = new function() {
 	};
 	this.TimeoutError.prototype = Object.create(Error.prototype);
 
+	// Max size of requested response to load; triggers 400 ResponseSizeError when exceeded
+	this.httpMaxResponseSize = ( config.has('httpMaxResponseSize') ? config.get('httpMaxResponseSize') : 10 ) * 1024 * 1024;
+
 	this.ResponseSizeError = function(url) {
 		this.message = `${url} response exceeds max size`;
 	};
@@ -101,9 +104,10 @@ Zotero.HTTP = new function() {
 	 *              otherwise unspecified content types are rejected.</li>
 	 *         <li>successCodes - HTTP status codes that are considered successful, or FALSE to allow all</li>
 	 *     </ul>
-	 * @return {Promise<Object>} A promise resolved with a response object containing:
+	 * @return {Promise<Object>} A promise resolved with an object containing the following XMLHttpRequest properties:
 	 * 		- responseText {String}
-	 * 		- headers {Object}
+	 * 		- getAllResponseHeaders {Function}
+	 * 		- getResponseHeader {Function}
 	 * 		- statusCode {Number}
 	 */
 	this.request = async function(method, requestURL, options = {}) {
@@ -117,11 +121,11 @@ Zotero.HTTP = new function() {
 			timeout: 15000,
 			responseType: '',
 			successCodes: null,
-			maxResponseSize: 50 * 1024 * 1024
+			maxResponseSize: this.httpMaxResponseSize
 		}, options);
 
 		options.headers = Object.assign({
-			'User-Agent': config.get('userAgent'),
+			'User-Agent': process.env.USER_AGENT || config.get('userAgent'),
 			'Accept': '*/*'
 		}, options.headers);
 
@@ -162,8 +166,13 @@ Zotero.HTTP = new function() {
 
 		var result = {
 			responseURL: response.request.uri.href,
-			headers: response.headers,
-			status: response.statusCode
+			status: response.statusCode,
+			getAllResponseHeaders: () => {
+				return [...Object.entries(response.headers)].map(([k, v]) => `${k}: ${v}\r\n`).join('');
+			},
+			getResponseHeader: (header) => {
+				return response.headers[header.toLowerCase()] || null;
+			}
 		};
 
 		var mimeType = new MIMEType(response.headers['content-type']);
@@ -388,7 +397,6 @@ function generateThrottledRequest(domain, requestIntervalForDomain) {
 }
 
 
-
 var getThrottledRequestForURL = (function() {
     var i = 0;
     return function(requestURL) {
@@ -412,114 +420,116 @@ var getThrottledRequestForURL = (function() {
 
 async function customThrottledRequest(method, requestURL, options) {
     var throttledRequestForURL = getThrottledRequestForURL(requestURL);
-	return new Promise(function (resolve, reject) {
-		let response;
+    return new Promise(function (resolve, reject) {
+        let response;
 
-		// Make sure resolve/reject is called only once even if request.js
-		// is emitting events when it shouldn't
-		let returned = false;
+        // Make sure resolve/reject is called only once even if request.js
+        // is emitting events when it shouldn't
+        let returned = false;
 
-		// Store buffers in array, because concatenation operation is is unbelievably slow
-		let buffers = [];
-		let bufferLength = 0;
+        // Store buffers in array, because concatenation operation is is unbelievably slow
+        let buffers = [];
+        let bufferLength = 0;
 
-		let req = throttledRequestForURL({
-			uri: requestURL,
-			method,
-			headers: options.headers,
-			timeout: options.timeout,
-			body: options.body,
-			gzip: false,
-			followAllRedirects: true,
-			jar: options.cookieSandbox,
-			encoding: null // Get body in a buffer
-		})
-			.on('error', function (err) {
-				if (returned) return;
-				reject(err);
-			})
-			.on('data', function (chunk) {
-				if (returned) return;
+        let req = request({
+            uri: requestURL,
+            method,
+            headers: options.headers,
+            timeout: options.timeout,
+            body: options.body,
+            gzip: true,
+            followAllRedirects: true,
+            jar: options.cookieSandbox,
+            encoding: null // Get body in a buffer
+        })
+            .on('error', function (err) {
+                if (returned) return;
+                reject(err);
+            })
+            .on('data', function (chunk) {
+                if (returned) return;
 
-				bufferLength += chunk.length;
-				buffers.push(chunk);
+                bufferLength += chunk.length;
+                buffers.push(chunk);
 
-				if (bufferLength > options.maxResponseSize) {
-					req.abort();
-					returned = true;
-					reject(new Zotero.HTTP.ResponseSizeError(requestURL));
-				}
-			})
-			.on('response', function (res) {
-				if (returned) return;
-				response = res;
+                if (bufferLength > options.maxResponseSize) {
+                    req.abort();
+                    returned = true;
+                    reject(new Zotero.HTTP.ResponseSizeError(requestURL));
+                }
+            })
+            .on('response', function (res) {
+                if (returned) return;
+                response = res;
 
-				if (!response.headers['content-type']) {
-					returned = true;
-					return reject(new Zotero.HTTP.UnsupportedFormatError(requestURL, 'Missing Content-Type header'));
-				}
+                                if (!response.headers['content-type']) {
+                    returned = true;
+                    return reject(new Zotero.HTTP.UnsupportedFormatError(requestURL, 'Missing Content-Type header'));
+                }
 
-				// Check if the status code is allowed
-				// Array of success codes given
-				if (options.successCodes) {
-					var success = options.successCodes.includes(response.statusCode);
-				}
-				// Explicit FALSE means allow any status code
-				else if (options.successCodes === false) {
-					var success = true;
-				}
-				// Otherwise, 2xx is success
-				else {
-					var success = response.statusCode >= 200 && response.statusCode < 300;
-				}
-				if (!success) {
-					returned = true;
-					return reject(new Zotero.HTTP.StatusError(requestURL, response.statusCode, response.body));
-				}
+                // Check if the status code is allowed
+                // Array of success codes given
+                if (options.successCodes) {
+                    var success = options.successCodes.includes(response.statusCode);
+                }
+                // Explicit FALSE means allow any status code
+                else if (options.successCodes === false) {
+                    var success = true;
+                }
+                // Otherwise, 2xx is success
+                else {
+                    var success = response.statusCode >= 200 && response.statusCode < 300;
+                }
+                if (!success) {
+                    returned = true;
+                    return reject(new Zotero.HTTP.StatusError(requestURL, response.statusCode, response.body));
+                }
 
-				// Check Content-Type before starting the download
-				let supported = true;
-				let mimeType = new MIMEType(response.headers['content-type']);
-				if (options.responseType == 'document') {
-					supported = mimeType.isHTML() || mimeType.isXML();
-				}
-				else if (options.responseTypeMap) {
-					let map = options.responseTypeMap;
-					supported = (map.has('html') && mimeType.isHTML())
-						|| (map.has('xml') && mimeType.isXML())
-						|| map.has(mimeType.essence)
-						// An empty string for a key allows unspecified types as text
-						|| map.has('');
-				}
+                // Check Content-Type before starting the download
+                let supported = true;
+                let mimeType = new MIMEType(response.headers['content-type']);
+                if (options.responseType == 'document') {
+                    supported = mimeType.isHTML() || mimeType.isXML();
+                }
+                else if (options.responseTypeMap) {
+                    let map = options.responseTypeMap;
+                    supported = (map.has('html') && mimeType.isHTML())
+                        || (map.has('xml') && mimeType.isXML())
+                        || map.has(mimeType.essence)
+                        // An empty string for a key allows unspecified types as text
+                        || map.has('');
+                }
 
-				if (!supported) {
-					req.abort();
-					returned = true;
-					return reject(new Zotero.HTTP.UnsupportedFormatError(
-						requestURL,
-						response.headers['content-type'] + ' is not supported'
-					));
-				}
+                                if (!supported) {
+                    req.abort();
+                    returned = true;
+                    return reject(new Zotero.HTTP.UnsupportedFormatError(
+                        requestURL,
+                        response.headers['content-type'] + ' is not supported'
+                    ));
+                }
 
-				// Content-length doesn't always exists or it can be a length of a gzipped content,
-				// but it's still worth to do the initial size check
-				if (
-					response.headers['content-length'] !== undefined &&
-					response.headers['content-length'] > options.maxResponseSize
-				) {
-					req.abort();
-					returned = true;
-					reject(new Zotero.HTTP.ResponseSizeError(requestURL));
-				}
+                // Content-length doesn't always exists or it can be a length of a gzipped content,
+                // but it's still worth to do the initial size check
+                if (
+                    response.headers['content-length'] !== undefined &&
+                    response.headers['content-length'] > options.maxResponseSize
+                ) {
+                    req.abort();
+                    returned = true;
+                    reject(new Zotero.HTTP.ResponseSizeError(requestURL));
+                }
                 Zotero.debug('Got response. Elapsed time: ' + (Date.now() - startedAt) + ' ms');
-			})
-			.on('end', function () {
-				if (returned) return;
-				returned = true;
-				resolve({response, body: Buffer.concat(buffers, bufferLength)});
-			});
-	});
+            })
+            .on('end', function () {
+                if (returned) return;
+                returned = true;
+                resolve({response, body: Buffer.concat(buffers, bufferLength)});
+            });
+    });
 };
+
+
 
 function getResponseType(contentType, options) {
 	var mimeType = new MIMEType(contentType);

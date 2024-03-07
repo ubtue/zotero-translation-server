@@ -28,7 +28,7 @@ const config = require('config');
 const urlLib = require('url');
 const { CONTENT_TYPES } = require('./formats');
 const Translate = require('./translation/translate');
-const TLDS = Zotero.require('./translation/tlds');
+const TLDS = Zotero.requireTranslate('./tlds');
 const HTTP = require('./http');
 const Translators = require('./translators');
 const SearchEndpoint = require('./searchEndpoint');
@@ -137,7 +137,7 @@ SearchMultipleSession.prototype.translate = async function (translate, translato
 
 	var json = [];
 	for (let item of items) {
-		json.push(...Zotero.Utilities.itemToAPIJSON(item));
+		json.push(...Zotero.Utilities.Item.itemToAPIJSON(item));
 	}
 	this.ctx.response.body = json;
 };

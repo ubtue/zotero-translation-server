@@ -68,7 +68,7 @@ var SearchMultipleEndpoint = module.exports = {
 		}
 		else {
 			// Look for DOI, ISBN, etc.
-			var identifiers = Zotero.Utilities.Internal.extractIdentifiers(data);
+			var identifiers = Zotero.Utilities.extractIdentifiers(data);
 			let single = !!ctx.request.query.single;
 			session = new SearchMultipleSession(ctx, next, data, { single });
 		}

@@ -32,6 +32,11 @@ const _ = require('koa-route');
 const bodyParser = require('koa-bodyparser');
 const cors = require('./cors');
 
+// Prevent UnhandledPromiseRejection crash in Node 15, though this shouldn't be necessary
+process.on('unhandledRejection', (reason, promise) => {
+	Zotero.debug('Unhandled rejection: ' + (reason.stack || reason), 1)
+});
+
 require('./zotero');
 const Debug = require('./debug');
 const Translators = require('./translators');
@@ -42,8 +47,25 @@ const ImportEndpoint = require('./importEndpoint');
 const SearchMultipleEndpoint = require('./searchmultipleEndpoint');
 
 const app = module.exports = new Koa();
+if (config.get('trustProxyHeaders')) {
+	app.proxy = true;
+}
+app.use(function (ctx, next) {
+	var msg = `${ctx.method} ${ctx.url} from ${ctx.request.ip} "${ctx.headers['user-agent']}"`;
+	if (ctx.headers.origin) {
+		msg += ` (${ctx.headers.origin})`;
+	}
+	Zotero.debug(msg);
+	return next();
+});
 app.use(cors);
-app.use(bodyParser({ enableTypes: ['text', 'json']}));
+app.use(
+	bodyParser({
+		enableTypes: ['text', 'json'],
+		jsonLimit: '5mb',
+		textLimit: '5mb',
+	})
+);
 app.use(_.post('/web', WebEndpoint.handle.bind(WebEndpoint)));
 app.use(_.post('/search', SearchEndpoint.handle.bind(SearchEndpoint)));
 app.use(_.post('/export', ExportEndpoint.handle.bind(ExportEndpoint)));

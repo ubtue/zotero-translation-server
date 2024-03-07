@@ -27,7 +27,7 @@ const config = require('config');
 const urlLib = require('url');
 const { CONTENT_TYPES } = require('./formats');
 const Translate = require('./translation/translate');
-const TLDS = Zotero.require('./translation/tlds');
+const TLDS = Zotero.requireTranslate('./tlds');
 const HTTP = require('./http');
 const Translators = require('./translators');
 const ImportEndpoint = require('./importEndpoint');
@@ -78,7 +78,7 @@ WebSession.prototype.handleURL = async function () {
 		let blacklisted = config.get("blacklistedDomains")
 			.some(x => x && new RegExp(x).test(domain));
 		if (blacklisted) {
-			let doi = Zotero.Utilities.cleanDOI(url);
+			let doi = this.cleanDOIFromURL(url);
 			if (!doi) {
 				this.ctx.throw(500, "An error occurred retrieving the document\n");
 			}
@@ -184,7 +184,7 @@ WebSession.prototype.handleURL = async function () {
 				translate.getTranslators(true);
 			}
 			else {
-				Zotero.debug(`Handling ${req.headers['content-type']} as import`);
+				Zotero.debug(`Handling ${req.getResponseHeader('content-type')} as import`);
 				this.ctx.request.body = req.response;
 				await ImportEndpoint.handle(this.ctx);
 				return;
@@ -259,10 +259,21 @@ WebSession.prototype.translate = async function (translate, translators) {
 
 	//this._cookieSandbox.clearTimeout();
 
+	// Check for DOI in URL if no results
+	if (!items.length) {
+		let doi = this.cleanDOIFromURL(translate.location);
+		if (doi) {
+			Zotero.debug(`No results -- continuing with DOI ${doi} from URL`);
+			await SearchEndpoint.handleIdentifier(this.ctx, { DOI: doi });
+			return;
+		}
+	}
+
 	var json = [];
 	for (let item of items) {
-		json.push(...Zotero.Utilities.itemToAPIJSON(item));
+		json.push(...Zotero.Utilities.Item.itemToAPIJSON(item));
 	}
+	this.ctx.response.status = 200;
 	this.ctx.response.body = json;
 };
 
@@ -277,7 +288,7 @@ WebSession.prototype.saveWebpage = function (translate) {
 		// XXX better status code?
 		this.ctx.throw(501, "No translators available\n");
 	}
-	
+
 	// TEMP: Return basic webpage item for HTML
 	let description = head.querySelector('meta[name=description]');
 	if (description) {
@@ -290,7 +301,7 @@ WebSession.prototype.saveWebpage = function (translate) {
 		abstractNote: description,
 		accessDate: Zotero.Date.dateToISO(new Date())
 	};
-	this.ctx.response.body = Zotero.Utilities.itemToAPIJSON(data);
+	this.ctx.response.body = Zotero.Utilities.Item.itemToAPIJSON(data);
 };
 
 
@@ -444,4 +455,14 @@ WebSession.prototype.deproxifyURL = function (url) {
 	urls.sort((a, b) => b.length - a.length);
 	urls.push(urls.shift());
 	return urls;
+};
+
+
+WebSession.prototype.cleanDOIFromURL = function (url) {
+	let doi = Zotero.Utilities.cleanDOI(decodeURIComponent(url));
+	if (doi) {
+		// Stop at query string, ampersand, or hash
+		doi = doi.replace(/[?&#].*/, '');
+	}
+	return doi || null;
 };

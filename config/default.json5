@@ -5,11 +5,13 @@
 	"identifierSearchLambda": "", // Identifier search Lambda function for text search
 	"port": 1969,
 	"host": "0.0.0.0", // host to listen on
-    "textSearchTimeout": 100,
-    "serverTimeout": 900000, // Also handle long running requests (15 * 60 * 1000
+        "httpMaxResponseSize": 10, // Max size of requested response to load; triggers 400 ResponseSize error when exceeded
+        "textSearchTimeout": 100,
+        "serverTimeout": 900000, // Also handle long running requests (15 * 60 * 1000
 	"translators": {
 		"CrossrefREST.email": "" // Pass an email to Crossref REST API to utilize the faster servers pool
 	},
+	"trustProxyHeaders": false, // Trust X-Forwarded-For when logging requests
 	"userAgent": "ub_tools/zotero (see https://ixtheo.de/crawler)",
 	"translatorsDirectory": "./modules/translators",
 	"persistentCookies": true, // Remember upstream cookies between translation operations. Do not enable for a public service.
